@@ -1,0 +1,18 @@
+#!/bin/sh
+# Spike MFSLive.org
+
+# determin bootpage
+tivoboot="`bootpage -b $1`"
+tivoroot=$(($tivoboot+1))
+echo "Active Root partition is " $tivoroot
+
+# run e2fasck
+/usr/sbin/e2fsck -p $1$tivoroot
+sleep 2
+
+# ext2resize
+/usr/sbin/ext2resize $1$tivoroot Mega-256
+sleep 5
+
+echo "Finished!"
+

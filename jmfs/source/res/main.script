@@ -1,0 +1,105 @@
+handler:		ui.UiHandler
+
+detectDrives:
+	prompt:		@end@@erase@Detecting disks...
+	execute:	{resetSelection}
+	execute:	{detectDrives}
+	choice:		0 = noDrives
+				1 = oneDrive
+				([\d&&[^01]]|[\d&&[^0]]\d+) = manyDrives
+
+noDrives:
+	prompt:		@erase@
+	prompt:		There were no Tivo drives detected in your system.
+	choice:		.* = askNoDrivesRetry
+
+askNoDrivesRetry:
+	prompt:		If  you are planning to add a drive using USB do it now, wait a few seconds and
+				enter  [@b@R@e@etry].  If  you  are  planning  to use other connectors [@b@S@e@hutdown] the
+				system, connect the drive and boot up this process again.
+				\n[@bold@R@end@]-Retry, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[R]\w* = detectDrives
+				default = noDrives
+
+oneDrive:
+	execute:	{getNumberOfTivoDrives}
+	choice:		0 = noDrives
+				.* = chooseOperation; {noCopy}
+
+manyDrives:
+	execute:	{getNumberOfTivoDrives}
+	choice:		0 = noDrives
+				.* = chooseOperation
+
+chooseOperation:
+	prompt:		@erase@
+	prompt:		What would you like to do with your Tivo drive?
+	execute:	{getNoCopy}
+	choice:		true = copyDisabledPrompt
+				.* = copyEnabledPrompt
+
+copyDisabledPrompt:
+	prompt:	 @f@Copy@e@           There is @u@only one disk drive detected@e@ in your system, therefore
+				@_@               @b@Copy@e@  is disabled. If you are planning to add a drive using USB
+				@_@               do  it  now,  wait  a few seconds and enter [@b@R@e@etry]. If you are
+				@_@               planning to use other connectors [@b@S@e@hutdown] the system, connect
+				@_@               the drive and boot up this process again.
+	choice:		.* = operationPrompt
+
+copyEnabledPrompt:
+	prompt:		@b@Copy@e@           This     will    copy  your  Tivo  drive  onto  another  one. It
+				@____@               is necessary to do before expanding your drive.
+	choice:		.* = operationPrompt
+
+operationPrompt:         
+	prompt:		@b@Expand@e@         Format    the    unused   space   on  the drive to be recognized
+				@____@               by  Tivo.  The  drive  must  contain a copy of the original Tivo
+				@____@               drive  on  it.   If  you did not  do copy or if you are not sure
+				@____@               AND  you  have  two  drives  ready  (one drive  containing  Tivo
+				@____@               and  another  one  that  you  would  like to use in your Tivo) -
+				@____@               choose @b@Copy@e@ first. @u@Expand does @b@NOT@e@@u@ Supersize automatically.@e@
+
+				@b@Supersize@e@      Make    Tivo    reserve    less    space  for advertizements, so
+				@____@               more space  is  available for recrding (e.g. 317 HD hours on 2TB
+				@____@               drive instead of 287). Drive  can  be  Supersized  at any time -
+				@____@               before   or  after  expanding   it.  @u@Expand  does  @b@NOT@e@@u@ Supersize@e@
+				@____@               @u@automatically@e@.
+
+	execute:	{getNoCopy}
+	choice:		true = withRetryPrompt
+				.* = withCopyPrompt
+
+withRetryPrompt:
+	prompt:		\n[@bold@R@end@]-Retry, [@bold@E@end@]-Expand, [@bold@Z@end@]-Supersize,\
+				[@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[R]\w* = detectDrives
+				[E]\w* = expand.selectDrive; {operationType}
+				[Z]\w* = supersize.selectDrive; {operationType}
+				default = chooseOperation
+
+withCopyPrompt:
+	prompt:		\n[@bold@C@end@]-Copy, [@bold@E@end@]-Expand, [@bold@Z@end@]-Supersize,\
+				[@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[C]\w* = copy.selectSource; {operationType}
+				[E]\w* = expand.selectDrive; {operationType}
+				[Z]\w* = supersize.selectDrive; {operationType}
+				default = chooseOperation
+
+
+import: copy.script
+import: expand.script
+import: supersize.script
+
+shutdown:
+	execute:	{setShutdown}
+
+exit:

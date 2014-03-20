@@ -1,0 +1,118 @@
+expand.selectDrive:
+	execute:	{getNumberOfTivoDrives}
+	choice:		0 = noDrives
+				1 = expand.only; {singleDrive}
+				.* = expand.chooseDrive
+
+expand.only:
+	prompt:		Checking MFS...
+	execute:	{targetHasExternal}
+	prompt:		@erase@
+	prompt:		There is only one Tivo drive detected in your system.
+	choice:		true = expand.singleExternal
+				invalid = expand.singleError
+	            .* = expand.ask
+
+expand.singleExternal:
+	prompt:		@yellow@This  drive  has  been  "married"  to  external  storage.@e@ This drive @b@can not@e@ be
+				expanded until "unmarried".\n
+	choice:		.* = expand.exitChoice
+				
+expand.singleError:
+	prompt:		@yellow@The MFS structure can not be verified on this drive - probably due to an error.@e@
+				For more information please see the log. This drive can not be expanded.\n
+	choice:		.* = expand.exitChoice
+				
+expand.chooseDrive:
+	prompt:		@erase@
+	prompt:		The following Tivo drives have been detected in your system:
+				\n@bold@{tivoDrives}@end@\n
+                Which   one  would you like to expand (this drive will be modified and then you
+                will use it in your Tivo)?
+				\n[@bold@number@end@]-Drive number from the list, [@bold@R@end@]-Choose another operation, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		{checkTivoDriveNumber}
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[R]\w* = detectDrives
+				\d+ = expand.checkExternal; {tivoDriveNumber}
+				default = expand.chooseDrive
+
+expand.ask:
+	prompt:		Would you like to expand this drive now?\n
+				\t@bold@{targetDrive}@end@
+				\n[@bold@Y@end@]-Yes, [@bold@N@end@]-No, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[Y]\w* = expand.sure
+				[N]\w* = detectDrives
+				default = expand.ask
+
+expand.checkExternal:
+	prompt:		Checking MFS...
+	execute:	{targetHasExternal}
+	choice:		true = expand.multiExternal
+				invalid = expand.multiError
+	            .* = expand.sure
+
+expand.multiExternal:
+	prompt:		@erase@
+	prompt:		@yellow@The drive you have selected been "married" to external storage.@e@ You will @b@not@e@ be
+				able  to  expand  this  drive until it is "unmarried".
+	choice:		.* = expand.retryChoice
+
+expand.multiError:
+	prompt:		@yellow@The MFS structure can not be verified on this drive - probably due to an error.@e@
+				For more information please see the log. This drive can not be expanded.          
+	choice:		.* = expand.retryChoice
+				
+expand.retryChoice:	
+	prompt:		Would you like to select another drive?
+				\n[@bold@Y@end@]-Yes, [@bold@N@end@]-No, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[N]\w* = detectDrives
+				[Y]\w* = expand.chooseDrive
+				default = expand.retryChoice
+
+expand.sure:
+	prompt:		@erase@
+	prompt:		You are about to expand\n
+				\t@bold@{targetDrive}@end@
+				\nAre you sure?
+				[@bold@Y@end@]-Yes, [@bold@N@end@]-No, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[Y]\w* = expand.run
+				[N]\w* = detectDrives
+				default = expand.sure
+
+expand.run:
+	prompt:		@erase@
+	execute:	{expand}
+	choice:		true = expand.success
+				.* = expand.error
+
+expand.success:
+	prompt:		@bold@** Expanded successfully.@end@\n
+	choice:		.* = expand.exitChoice
+
+expand.error:
+	prompt:		@red@Expand did not finish successfully.@end@ Would you like to retry?
+				\n[@bold@Y@end@]-Yes, [@bold@N@end@]-No, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[Y]\w* = expand.sure
+				[N]\w* = detectDrives
+				default = expand.error
+
+expand.exitChoice:	
+	prompt:		[@bold@R@end@]-Choose another operation, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[R]\w* = detectDrives
+				default = expand.exitChoice

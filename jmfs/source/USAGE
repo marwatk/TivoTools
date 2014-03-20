@@ -1,0 +1,64 @@
+*WARNING*
+	1.	Software is provided with ABSOLUTELY NO WARRANTY.
+		Please read the licence terms (GPL v3).
+	2.	Opening your Tivo cover will void manufacturers warranty.
+	3.	Although program is not designed to do (and actually attempts to prevent) data
+		loss and distruction, it certainly has a potential to do so.
+		It is ultimately YOUR responsibility to backup, stow away and otherwise protect
+		your data.
+
+OVERVIEW
+	This is a bootable Linux CD based on Slax distribution. It includes all software tools
+	known to make a harddrive larger than the standard work in Tivo Premiere with expanded capacity.
+	Basic usage, suitable for most users who only want to expand their Tivo disk capacity, is
+	fully guided, based on simple-choice-prompt automated script.
+
+	It was ONLY TESTED ON PREMIERE DISK.
+	Also, it was not tested and probably will not work on multi-disk configurations.
+
+	The full procedure of making a larger Tivo Premiere disk contains the following:
+	1.	Taking the original disk out of the Tivo
+	2.	Copying the original disk onto a new larger one
+	3.	Doing modifications of structures on the new disk to make extra space available for Tivo
+	4.	Installing the new disk back into Tivo.
+
+	This CD helps doing steps #2 and #3 of this procedure.
+
+USAGE BASIC
+	1. Download CD disk image (ISO) here
+	2. Burn it on CD
+	3. Connect a Tivo disk and a new large disk to a computer
+	4. Boot that computer from the CD burned in step #2.
+	5. The guide will be started automatically, follow the prompts.
+
+	If you ever find yourself in a shell (command prompt) you can:
+	a) Restart the guide by
+		"/root/guide.sh" command
+	a) Shutdown the system by ony of:
+		pressing Ctrl-D
+		"exit" command,
+		"logout" command
+		"poweroff" command
+	b) Reboot the system by ony of:
+		pressing Ctrl-Alt-Del
+		"reboot" command
+
+	During the guided process there is a log file created "/root/log.log". If you experience any
+	problems or errors please check that file for any etended error information. It would like
+	to ask for assistance, please copy the log file somewhere, where you can access it later (e.g. mount
+	an external USB drive or existing partitions and copy it there).
+
+USAGE ADVANCED
+	There are scripts included to run tools separately, outside of the guided prompt:
+
+	1.	mfsadd.sh
+		Expects 1 parameter - target drive for expansion (e.g. "/dev/sda").
+		Drive must already contain copy of the original Tivo disk.
+	2.	diskCopy.sh
+		A "shortcut" for "ddrescue", expects two parameters: source disk and target disk or file name
+		(e.g. "/dev/sda /dev/sdb" or "/dev/sda /mnt/sdb1/tivo.img").
+	3.	mfslayout.sh
+		Prints the layout of a Tivo disk. Usefull for testing/making sure the disk is OK.
+		Expects 1 parameter - Tivo drive name (e.g. "/dev/sda").
+	4.	jmfs.sh
+		Base script to run a class from jmfs package. All arguments are passed to executed class.

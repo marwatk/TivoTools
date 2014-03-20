@@ -1,0 +1,52 @@
+diff -ru linux-2.4.21/fs/partitions/Config.in linux/fs/partitions/Config.in
+--- linux-2.4.21/fs/partitions/Config.in	2002-11-28 17:53:15.000000000 -0600
++++ linux/fs/partitions/Config.in	2003-06-13 18:56:57.000000000 -0500
+@@ -18,6 +18,9 @@
+       bool '  IBM disk label and partition support' CONFIG_IBM_PARTITION
+    fi
+    bool '  Macintosh partition map support' CONFIG_MAC_PARTITION
++   if [ "$CONFIG_MAC_PARTITION" = "y" ]; then
++      bool '    TiVo partition map support' CONFIG_TIVO_PARTITION
++   fi
+    bool '  PC BIOS (MSDOS partition tables) support' CONFIG_MSDOS_PARTITION
+    if [ "$CONFIG_MSDOS_PARTITION" = "y" ]; then
+       bool '    BSD disklabel (FreeBSD partition tables) support' CONFIG_BSD_DISKLABEL
+diff -ru linux-2.4.21/fs/partitions/mac.c linux/fs/partitions/mac.c
+--- linux-2.4.21/fs/partitions/mac.c	2002-08-02 19:39:45.000000000 -0500
++++ linux/fs/partitions/mac.c	2003-06-13 18:56:57.000000000 -0500
+@@ -38,11 +38,20 @@
+ 	md = (struct mac_driver_desc *) read_dev_sector(bdev, 0, &sect);
+ 	if (!md)
+ 		return -1;
+-	if (be16_to_cpu(md->signature) != MAC_DRIVER_MAGIC) {
+-		put_dev_sector(sect);
+-		return 0;
++	switch(be16_to_cpu(md->signature))
++	{
++		case MAC_DRIVER_MAGIC:
++			secsize = be16_to_cpu(md->block_size);
++			break;
++#ifdef CONFIG_TIVO_PARTITION
++		case TIVO_DRIVER_MAGIC:
++			secsize = 512;
++			break;
++#endif /* CONFIG_TIVO_PARTITION */
++		default:
++			put_dev_sector(sect);
++			return 0;
+ 	}
+-	secsize = be16_to_cpu(md->block_size);
+ 	put_dev_sector(sect);
+ 	data = read_dev_sector(bdev, secsize/512, &sect);
+ 	if (!data)
+diff -ru linux-2.4.21/fs/partitions/mac.h linux/fs/partitions/mac.h
+--- linux-2.4.21/fs/partitions/mac.h	2002-08-02 19:39:45.000000000 -0500
++++ linux/fs/partitions/mac.h	2003-06-13 18:56:57.000000000 -0500
+@@ -40,6 +40,7 @@
+ #define MAC_STATUS_BOOTABLE	8	/* partition is bootable */
+ 
+ #define MAC_DRIVER_MAGIC	0x4552
++#define TIVO_DRIVER_MAGIC	0x1492
+ 
+ /* Driver descriptor structure, in block 0 */
+ struct mac_driver_desc {

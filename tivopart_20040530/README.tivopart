@@ -1,0 +1,251 @@
+Posting date: 2004/05/30
+
+This is the README for the tivopart archive.
+
+Changes from last time:
+
+ - Removed some of the "sanity" checking that caused inappropriate failures
+   on some restored images
+
+ - Yet another new layout in "consolidate":
+   
+    * hda1: ?????? (????) Main root    (the root fs that actually boots)
+    * hda2:   8192 (  4M) Decoy kernel (signed but compromised kernel)
+    * hda3:   8192 (  4M) Kernel 1
+    * hda4: 262144 (256M) Root 1
+    * hda5:   8192 (  4M) Decoy root   (decoy root to satisfy initrd checks)
+    * hda6:   8192 (  4M) Kernel 2
+    * hda7: 262144 (256M) Root 2
+    * hda8: ?????? (????) Linux swap   (custom size)
+
+   Improvements include:
+
+    - always uses hda1 for the large root partition, so installation and
+      startup scripts do not need to guess at which of 12/14/16 it resides
+      in (unfortunately, this breaks the standard and puts the partition
+      map in unallocated space - but it's not half as bad as putting a
+      romfs there)
+
+    - root filesystems have been enlarged to 256MB for 3.1.5/HD TiVo
+      compatibility
+
+    - everything else is 4MB, because, well, disk space is cheap.
+
+    - attempts to reclaim space in the Apple_Free partition and from other
+      odd places where previous versions of tivopart put it.  The end
+      result of this strategy is that tivopart should be able to convert
+      you to the "new" layout without a restore (leaving MFS intact).
+ 
+ - Added automagic r/w support for byteswapped (Series 1) drives.
+ 
+   NOTE:
+
+   This will NOT allow you to mount byteswapped partitions from Linux,
+   since it applies only to r/w operations within pdisk/tivopart
+   themselves.  With a few small fixups, though, the vplay-based utilities
+   can easily handle working with byteswapped drives directly after you
+   have used this tivopart release to revalidate the partition table.
+ 
+ - Known bugs:
+
+   - if you build it on a Macintosh or other PPC arch, it will assume
+     you're on a TiVo.  Same for MIPS.
+
+   - the old revalidate code is still used when the pdisk code writes out
+     the partition map
+
+   - still a bunch of silly compiler warnings
+
+   - all binaries in the package are untested
+
+
+
+Old READMEs follow:
+
+Posting date: 2003/11/23
+
+Changes from last time:
+
+ - Fixed a few corner cases in tivopart/consolidate which previously
+   required the -f flag
+ 
+ - Adjusted tivopart to work correctly with drives which have fewer than
+   16 total partitions
+ 
+ - Changed tivopart/consolidate to standardize hda2/3/5/6 on 8192 blocks =
+   4MB each
+
+This archive contains the following source code:
+
+ - a slightly modified version of pdisk, adapted to work with the TiVo
+   "0x1492" partition tables
+
+ - the "tivopart" utility, an easy-to-use tool that repartitions your
+   TiVo hard drive in a fashion suitable for a monte setup
+ 
+ - the "lba48chk" utility, which allows your startup scripts to detect
+   if you are running a non-LBA48 kernel but your disk contains partitions
+   that extend past the LBA28 mark
+ 
+ - the "getkey" utility, a simple tool that allows your startup scripts to
+   solicit a keypress from the user at startup
+   
+ - the "cvt_pt" utility, a partition type converter.  I have never used it
+   but it came with pdisk so it was included for completeness
+
+This archive also contains IA32, MIPS, and PPC binaries for all of these
+programs, with the exception of tivopart for PPC.  None have been heavily
+tested but they worked for me.
+
+Usage notes: pdisk / cvt_pt
+
+  pdisk documentation is included in the src/ directory.
+
+  I did not write it so I will not attempt to document it.
+
+Usage notes: tivopart
+
+tivopart has three main functions:
+
+  c[onsolidate]:
+
+  This operation has been completely changed, and the "unconsolidate"
+  option is no longer available.
+  
+  (from src/tivopart.c)
+
+/* consolidate(): rearranges the partition layout
+ *
+ * original layout:
+ *
+ * hda1:     63 ( 32K) Apple (partition map)
+ * hda2:   4096 (  2M) Bootstrap 1
+ * hda3:   4096 (  2M) Kernel 1
+ * hda4: 262144 (128M) Root 1
+ * hda5:      1 ( 512) Bootstrap 2
+ * hda6:   8192 (  4M) Kernel 2
+ * hda7: 262144 (128M) Root 2
+ * hda8: ?????? (????) Linux swap  (varies)
+ * ...
+ * hda?: ?????? (????) Extra
+ *
+ * new layout:
+ *
+ * hda1:     63 ( 32K) Apple (partition map)
+ * hda2:   4096 (  2M) Decoy kernel (signed but compromised kernel)
+ * hda3:   4096 (  2M) Kernel 1
+ * hda4: 262144 (128M) Root 1
+ * hda5:   8192 (  4M) Decoy root   (decoy root to satisfy initrd checks)
+ * hda6:   8192 (  4M) Kernel 2
+ * hda7: 262144 (128M) Root 2
+ * hda8: ?????? (????) Linux swap   (custom size)
+ * hda?: ?????? (????) Main root    (the root fs that actually boots)
+ *
+ * by varying the size of the -s parameter to mfsrestore, the amount of
+ * free space in the user's custom root partition may be increased
+ */
+
+  The idea is to use the "-s" switch in mfstools to allocate a swap
+  area that is much larger than what you really need, and then carve
+  a root partition (hda14/hda16) out of the extra space.  For instance,
+  I typically ask mfstools for 2048 megs of swap, and then have tivopart
+  allocate 1920 megs or so to hda16 and 128 to swap.
+
+  On a monte setup, I use the minimal root filesystem to satisfy the
+  initrd, placing the small root in hda5 and the 3.1U5 kernel in hda2.
+  The BASH_ENV variable in the kernel command line is updated to
+  contain commands to mount /dev/hda1[46] and execute a small startup
+  script on that partition.
+
+  The minimal root filesystem can be found here:
+
+  http://www.dealdatabase.com/forum/showthread.php?s=&threadid=25219
+
+  You will need to initialize the following partitions by hand or by script
+  after repartitioning (tivopart does not preserve the data in them):
+
+  hda2, hda5 (monte only)
+  hda4/hda3 or hda7/hda6: active root and kernel partitions
+  hda8: swap
+  hda14/hda16: new root filesystem
+
+  d[ump]:
+
+  This dumps the current partition layout to standard output.
+
+  r[evalidate]:
+
+  This uses the "blkpg" functions in modern (2.4) Linux kernels to
+  update the in-memory partition table with the contents of the on-disk
+  partition table.  Obviously this does not involve writing anything to
+  the disk.
+
+  THIS SHOULD ONLY BE USED ON DRIVES THAT CONTAIN A TIVO PARTITION TABLE.
+
+  With this feature you can write a new partition table to your TiVo
+  drive (with mfstools, tivopart, pdisk, or something else) and then
+  immediately ask the kernel to revalidate it without rebooting.
+
+  This implies that you no longer need to patch the kernel on your desktop
+  PC to recognize a TiVo partition table, as you can use tivopart to
+  dynamically adjust the in-memory partition table after you have booted.
+  However if you are dealing with an S1 drive you will still need to
+  install the byteswap patch to mount TiVo partitions.
+
+  The blkpg ioctls will NOT revalidate any partitions that are mounted or
+  in use.  However, they will gracefully skip over in-use partitions and
+  revalidate the rest of them, unlike the old BLKRRPART interface.
+
+Usage notes: lba48chk
+
+  lba48chk opens the drive specified on the command line (defaulting to
+  /dev/hda if none), reads the TiVo partition table, and ensures that
+  none of the partitions occupy space past the end of the disk.
+  This means that if you have initialized, say, a 160GB disk as 160GB
+  (instead of initializing it on an LBA28 setup as 137GB), lba48chk will
+  return an error.
+
+  The intent of this utility is to alert a startup script to the fact
+  that a non-LBA48 kernel is being used to access a drive which was
+  initialized as a "large" (LBA48) drive.  The results of tivoapp
+  attempting to write past the 137GB mark with a non-LBA48 kernel may well
+  be catastrophic.
+
+Usage notes: getkey
+
+  getkey is a simple utility I use to prompt a user for a keystroke on
+  startup.  My startup script looks something like:
+
+  --------
+
+	exec 0< /dev/ttyS2
+	exec 1> /dev/ttyS2
+	exec 2> /dev/ttyS2
+
+	echo "(B)oot: start TiVo rc.sysinit normally, then run a shell"
+	echo "(R)ecovery mode: drop to a shell immediately"
+	echo "(S)hell: launch standard services and then drop to a shell"
+	echo ""
+	echo -n "Pick an option or boot in 5 seconds"
+
+	getkey -a brs -t 5
+	RET=$?
+	echo ""
+
+	case "$RET" in
+		0|1)
+			echo "Starting normal boot..."
+			...
+			;;
+		2)
+			echo "Starting recovery mode..."
+			exec /bin/bash
+			...
+			;;
+		
+		# ... and so on
+	esac
+
+  --------
+
+end of README.tivopart.

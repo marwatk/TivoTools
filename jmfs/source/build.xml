@@ -1,0 +1,211 @@
+<project name="jmfs" default="build" basedir="." >
+
+	<property environment="env" />
+
+	<property file="build.properties" />
+
+	<property name="home.dir"			value="${basedir}"/>
+	<property name="src.dir"			value="src"/>
+	<property name="res.dir"			value="res"/>
+	<property name="scr.dir"			value="scripts"/>
+	<property name="tmp.dir"			value="tmp"/>
+	<property name="script.files"		value="*.sh,*.bat"/>
+	<property name="classes.dir"		value="bin"/>
+	<property name="revision.file"		value="${res.dir}/revision" />
+	<property name="jar.basename"		value="${ant.project.name}" />
+	<property name="zip.bin.basename"	value="${ant.project.name}-bin" />
+	<property name="zip.src.basename"	value="${ant.project.name}-src" />
+	<property name="jar.name"			value="${jar.basename}*.jar" />
+	<property name="zip.bin.name"		value="${zip.bin.basename}*.zip" />
+	<property name="zip.src.name"		value="${zip.src.basename}*.zip" />
+	<property name="test.class"			value="Test"/> <!-- if property is defined in build.properties it won't be changed -->
+
+	<path id="res.classpath">
+		<pathelement location="${res.dir}" />
+	</path>
+
+	<path id="project.classpath">
+		<pathelement location="${classes.dir}"/>
+		<path refid="res.classpath"/>
+	</path>
+
+	<fileset id="jar.files" dir="${classes.dir}">
+		<include name="**/*.class" />
+		<exclude name="**/*Test*" />
+	</fileset>
+
+	<fileset id="src.files" dir="${home.dir}">
+		<include name="${src.dir}/**/*.java" />
+		<exclude name="${src.dir}/**/*Test*" />
+		<include name="${res.dir}/**" />
+		<exclude name="${res.dir}/**/*test*" />
+		<include name="${scr.dir}/**" />
+		<exclude name="${scr.dir}/**/*test*" />
+		<include name="*.xml" />
+		<include name="README" />
+		<include name="COPYING" />
+		<include name="USAGE" />
+	</fileset>
+
+	<fileset id="zip.files" dir="${home.dir}">
+		<include name="${jar.name}" />
+		<include name="README" />
+		<include name="COPYING" />
+		<include name="USAGE" />
+	</fileset>
+
+	<target name="init">
+	</target>
+
+	<!-- Removes the build directories -->
+	<target name="clean">
+		<echo message="Cleans the environment"/>
+		<delete dir="${classes.dir}"/>
+		<delete	failonerror="false">
+			<fileset dir="." includes="${jar.name}" />
+		</delete>
+		<delete	failonerror="false">
+			<fileset dir="." includes="${zip.bin.name}" />
+		</delete>
+		<delete	failonerror="false">
+			<fileset dir="." includes="${zip.src.name}" />
+		</delete>
+	</target>
+
+	<target name="compile">
+		<mkdir	dir="${classes.dir}"/>
+		<echo	message="Compiling..."/>
+		<javac	srcdir="${src.dir}"
+				destdir="${classes.dir}"
+				debug="true"
+				deprecation="false" 
+				nowarn="true"
+				target="1.5"
+				updatedProperty="compiled"
+		>
+			<classpath refid="project.classpath"/>
+		</javac>
+	</target>
+
+	<target name="set.revision">
+		<exec	osfamily="windows"
+				executable="cmd"
+				vmlauncher="true"
+				failonerror="false"
+				failifexecutionfails="false" >
+			<arg value="/c"/>
+			<arg value="scripts\revision.bat"/>
+			<arg value="-p"/>
+			<redirector outputproperty="raw.revision">
+				<outputfilterchain>
+					<linecontainsregexp><regexp pattern="\d+\w*"/></linecontainsregexp>
+					<tokenfilter><containsregex	pattern="^([^\s]+\:)?([\d\w]+)"
+												replace="\2" /></tokenfilter>
+				</outputfilterchain>
+			</redirector>
+		</exec>
+		<exec	osfamily="unix"
+				executable="./scripts/revision.sh"
+				vmlauncher="true"
+				failonerror="false"
+				failifexecutionfails="false" >
+			<redirector outputproperty="raw.revision">
+				<outputfilterchain>
+					<linecontainsregexp><regexp pattern="\d+\w*"/></linecontainsregexp>
+					<tokenfilter><containsregex	pattern="^([^\s]+\:)?([\d\w]+)$"
+												replace="\2" /></tokenfilter>
+				</outputfilterchain>
+			</redirector>
+		</exec>
+
+		<condition property="revision" value="${raw.revision}" else="local">
+			<and>
+				<isset property="raw.revision" />
+				<length string="${raw.revision}" trim="true" when="greater" length="0" />
+			</and>
+		</condition>
+
+		<echo message="revision=${revision}"/>
+		<property name="new.jar.name"		value="${jar.basename}-rev${revision}.jar" />
+		<property name="new.zip.bin.name"	value="${zip.bin.basename}-rev${revision}.zip" />
+		<property name="new.zip.src.name"	value="${zip.src.basename}-rev${revision}.zip" />
+	</target>
+
+	<target name="check.jar">
+		<condition property="rejar">
+			<or>
+				<isset property="compiled" />
+				<not>
+					<and>
+						<isset property="revision" />
+						<available file="${new.jar.name}" />
+					</and>
+				</not>
+			</or>
+		</condition>
+	</target>
+
+	<target name="jar" depends="compile, set.revision, check.jar" if="rejar">
+		<delete	failonerror="false">
+			<fileset dir="." includes="${jar.name}" />
+		</delete>
+		<tstamp>
+			<format property="time.date" pattern="d-MMM-yyyy HH:mm"/>
+		</tstamp>
+
+		<jar	destfile="${new.jar.name}">
+			<fileset refid="jar.files"/>
+			<fileset dir="${res.dir}" />
+			<manifest>
+				<attribute name="Built-Date"				value="${time.date}" />
+				<attribute name="Implementation-Version"	value="${revision}" />
+			</manifest>
+		</jar>
+	</target>
+ 
+	<target name="bin" depends="jar">
+		<delete	failonerror="false">
+			<fileset dir="." includes="${zip.bin.name}" />
+		</delete>
+
+		<mkdir	dir="${tmp.dir}"/>
+		<copy todir="${tmp.dir}" overwrite="true" >
+			<fileset dir="${scr.dir}" includes="${script.files}" excludes="revision*" />
+			<filterset>
+				<filter token="jar-name" value="${new.jar.name}" />
+			</filterset>
+		</copy>
+
+		<zip	destfile="${new.zip.bin.name}"
+				duplicate="fail" >
+				<fileset refid="zip.files" />
+				<fileset dir="${tmp.dir}" includes="${script.files}" />
+		</zip>
+
+		<delete dir="${tmp.dir}"/>
+	</target>
+
+	<target name="src">
+		<delete	failonerror="false">
+			<fileset dir="." includes="${zip.src.name}" />
+		</delete>
+		<zip	destfile="${new.zip.src.name}"
+				duplicate="fail" >
+				<fileset refid="src.files"/>
+		</zip>
+	</target>
+
+	<target	name="build" depends="init,compile"/>
+
+	<target name="package" depends="build,jar,bin,src" />
+
+	<target name="run" depends="build" >
+		<java	classname="${test.class}"
+				classpathref="project.classpath"
+				maxmemory="700m"
+				fork="true" >
+			<arg value="${test.file}" />
+		</java>
+	</target>
+
+</project>

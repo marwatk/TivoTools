@@ -1,0 +1,164 @@
+copy.selectSource:
+	execute:	{getNumberOfTivoDrives}
+	choice:		0 = noDrives
+				1 = copy.single
+				.* = copy.chooseSource
+
+copy.single:
+	prompt:		@erase@
+	prompt:		There is only one Tivo drive is detected in your system:\n
+				\n@bold@{singleDrive}@end@\n
+                Would  you like to use it as a source for copy (this drive will not be modified
+                - it will only be read)?
+				\n[@bold@Y@end@]-Yes, [@bold@N@end@]-No, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[N]\w* = detectDrives
+				[Y]\w* = copy.checkExternal; {singleDrive}
+				default = copy.single
+
+copy.chooseSource:
+	prompt:		@erase@
+	prompt:		The following Tivo drives have been detected in your system:
+				\n@bold@{tivoDrives}@end@\n
+                Which   one  would you like to use as a source for copy (this drive will not be
+                modified - it will only be read)?
+				\n[@bold@number@end@]-Drive number from the list, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		{checkTivoDriveNumber}
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				\d+ = copy.checkExternal; {sourceDriveNumber}
+				default = copy.chooseSource
+
+copy.checkExternal:
+	execute:	{sourceHasExternal}
+	choice:		true = copy.warnExternal
+				invalid = copy.warnAskExternal
+	            .* = copy.selectTarget
+
+copy.warnAskExternal:
+	prompt:		@yellow@The MFS structure can not be verified on this drive - probably due to an error.@e@
+				For more information please see the log. Do you still want to copy it?
+				\n[@bold@Y@end@]-Yes, [@bold@N@end@]-No, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[N]\w* = copy.selectSource
+				[Y]\w* = copy.selectTarget
+				default = copy.warnAskExternal
+
+copy.warnExternal:
+	prompt:		@erase@
+	prompt:		@yellow@The drive you have selected as a source has been "married" to external storage.@e@
+				You will @b@not@e@ be able to expand this drive until it is "unmarried". Do you still
+				want to copy it?
+				\n[@bold@Y@end@]-Yes, [@bold@N@end@]-No, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[N]\w* = copy.selectSource
+				[Y]\w* = copy.selectTarget
+				default = copy.warnExternal
+
+copy.selectTarget:
+	execute:	{getNumberOfAllDrives}
+	choice:		[2] = copy.selectAutoTarget; {autoTarget}
+				.* = copy.chooseTarget
+
+copy.selectAutoTarget:
+	prompt:		@erase@
+	prompt:		The only other drive detected in your system:
+				\n@bold@{targetDrive}@end@\n
+                Would  you  like  to use it as a target for copy (this drive will be modified -
+                the Tivo will be copied onto it)?
+				\n[@bold@Y@end@]-Yes, [@bold@N@end@]-No, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[Y]\w* = copy.sure
+				[N]\w* = detectDrives
+				default = copy.selectAutoTarget
+
+copy.chooseTarget:
+	prompt:		@erase@
+	prompt:		The following other drives have been detected in your system:
+				\n@bold@{allDrivesExcludeSelected}@end@\n
+                Which   one  would  you  like  to  use as a target for copy (this drive will be
+                modified - the Tivo will be copied onto it)?
+				\n[@bold@number@end@]-Drive number from the list, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		{checkTargetDriveNumber}
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				\d+ = copy.sure; {targetDriveNumber}
+				default = copy.selectTarget
+
+copy.sure:
+	prompt:		@erase@
+	prompt:		You are about to copy\n
+				\t@bold@{sourceDrive}@end@
+				to
+				\t@bold@{targetDrive}@end@
+	execute:	{checkTargetEnoughForSource}
+	choice:		true = copy.sureAlright
+				.* = copy.sureWarn
+
+copy.sureWarn:
+	prompt:		\n@bold@@yellow@Your target drive is smaller than the source!@end@ \
+	choice:		.* = copy.sureAlright
+
+copy.sureAlright:
+	prompt:		\nAre you sure?
+	choice:		.* = copy.choice
+
+copy.choice:
+	prompt:		[@bold@Y@end@]-Yes, [@bold@N@end@]-No, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[Y]\w* = copy.run
+				[N]\w* = detectDrives
+				default = copy.sure
+
+copy.run:
+	prompt:		@erase@
+	execute:	{copy}
+	choice:		true = copy.success
+				.* = copy.error
+
+copy.success:
+	prompt:		@bold@** Copied successfully.@end@\n
+	execute:	{sourceHasExternal}
+	choice:		true = copy.noExpand
+				invalid = copy.error.noExpand
+				.* = expand.ask
+
+copy.error.noExpand:
+	prompt:		@yellow@The MFS structure can not be verified on the target - probably due to an error.@e@
+				For more information please see the log. You can not expand the target drive.
+				\n[@bold@R@end@]-Choose another operation, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[R]\w* = detectDrives
+				default = copy.noExpand
+
+copy.noExpand:
+	prompt:		@yellow@Since  the  source  drive  has  been "married" to external storage, you can not
+                expand the copy.@e@
+				\n[@bold@R@end@]-Choose another operation, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[R]\w* = detectDrives
+				default = copy.noExpand
+
+copy.error:
+	prompt:		@red@Copy did not finish successfully.@end@ Would you like to retry?
+				\n[@bold@Y@end@]-Yes, [@bold@N@end@]-No, [@bold@X@end@]-Exit, [@bold@S@end@]-Shutdown and <Enter>: \
+	input:		
+	choice:		[X]\w* = exit
+				[S]\w* = shutdown
+				[Y]\w* = copy.sure
+				[N]\w* = detectDrives
+				default = copy.error
