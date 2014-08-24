@@ -27,5 +27,5 @@ length=$4
 let blockstart=$blocksize*$partnum
 let valuestart=$blockstart+$offset
 
-dd if=$device bs=1 skip=$valuestart count=$length 2>/dev/null
+dd if=$device bs=1 skip=$valuestart count=$length 2>/dev/null | sed 's/\x0.*//'
 
