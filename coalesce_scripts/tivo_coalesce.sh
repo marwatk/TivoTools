@@ -57,9 +57,18 @@ if [ "$correct_second_loc" != "$second_loc" ]; then
 fi
 
 num_partitions=`./apm_get_partition_count.sh $device`
-if [ "$num_partitions" -lt 15 ]; then
-    echo "Cannot have fewer than 14 partitions (partition 14 cannot be moved)"
-    exit 1
+fourteen_name=`./apm_get_partition_name.sh $device 14`
+
+if [ "$fourteen_name" == "SQLite" ]; then
+    if [ "$num_partitions" -lt 15 ]; then
+        echo "Cannot have fewer than 14 partitions on Series 4 (partition 14 cannot be moved)"
+        exit 1
+    fi
+else
+    if [ "$num_partitions" -lt 14 ]; then
+        echo "Warning: I don't have a series 3 and have not tested fewer than 14 partitions"
+        read -p "Press [enter] to continue or press Ctrl+C to quit"
+    fi
 fi
 
 backup_file="/tmp/coalesce_${first_part}_${second_part}.img"
